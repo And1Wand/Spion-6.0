@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spion Spiel</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: linear-gradient(135deg, #2a3d66, #0b1020);
+      color: white;
+      text-align: center;
+    }
+    .hidden { display: none; }
+    .screen { padding: 2em; }
+    .card {
+      background-color: #add8e6;
+      color: black;
+      padding: 2em;
+      margin: 1em;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-block;
+      min-width: 150px;
+    }
+    .button {
+      margin-top: 1em;
+      padding: 1em 2em;
+      font-size: 1em;
+      background-color: #1a2c4f;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 1em;
+    }
+    label { display: flex; align-items: center; gap: 0.5em; }
+  </style>
+</head>
+<body>
+  <div id="screen1" class="screen">
+    <h1>Spion Spiel</h1>
+    <label>Spieleranzahl: <input id="spieleranzahl" type="number" min="3" max="20" value="4"></label><br>
+    <label>Impostoranzahl: <input id="impostoranzahl" type="number" min="1" value="1"></label><br>
+    <button class="button" onclick="spielerfelderGenerieren()">Spielernamen generieren</button>
+    <div id="spielernamenContainer"></div>
+    <h2>Kategorien</h2>
+    <div id="kategorienContainer" class="category-grid"></div>
+    <button class="button" onclick="spielStarten()">Spielen</button>
+  </div>
+
+  <div id="screen2" class="screen hidden">
+    <h2>Spielkarten</h2>
+    <div id="kartenContainer"></div>
+    <p id="startspieler" style="color: white; font-size: 1.2em; margin-top: 20px;"></p>
+    <button class="button" onclick="aufloesen()">Auflösen</button>
+  </div>
+
+  <div id="screen3" class="screen hidden">
+    <h2 id="aufloesungText"></h2>
+    <button class="button" onclick="erneutSpielen()">Erneut spielen</button>
+    <button class="button" onclick="zurueckZumMenue()">Menü</button>
+  </div>
+
+  <script>
+    const kategorien = {
+  "Rund um die Welt": [
+    "Weltkarte", "Kontinent", "Regenwald", "Wüste", "Meer", "Berg", "Insel", "Fluss", "Hauptstadt", "Nationalpark",
+    "Eiffelturm", "Pyramide", "Safari", "Tundra", "Vulkan", "Hurrikan", "Globus", "Grenze", "Klima", "Zeitzone",
+    "Safari", "Archipel", "Küste", "Dschungel", "Gletscher", "Metropole", "Währung", "Tourist", "Kultur", "Sprachen",
+    "Meeresspiegel", "Polarlicht", "Safari", "Biodiversität", "Naturkatastrophe", "Wanderlust", "Fjord", "Savanne", "Nomade", "Großstadt",
+    "Markt", "Tempel", "Wasserfall", "Sehenswürdigkeit", "Nationalflagge", "Höhle", "Plattform", "Expedition", "Monument", "Reiseziel"
+  ],
+  "Unterhaltung": [
+    "Kino", "Theater", "Musik", "Bühne", "Künstler", "Film", "Konzert", "Comedy", "Buch", "Game",
+    "Festival", "Podcast", "Tanz", "Oper", "Zauberer", "Magier", "Karussell", "Clown", "Zirkus", "Fernsehen",
+    "Streaming", "Quiz", "Karaoke", "Band", "Schauspieler", "Moderator", "Show", "Trailer", "Premiere", "Musical",
+    "Bühnenbild", "Tonstudio", "Publikum", "Aufführung", "Lichtshow", "Orchester", "Kabarett", "Improvisation", "Story", "Drama",
+    "Comedy", "Sitcom", "Drehbuch", "Regisseur", "Choreografie", "Serien", "Doku", "Videospiel", "Kunst", "Schauspiel"
+  ],
+  "Alltag": [
+    "Zahnbürste", "Schlüssel", "Kaffee", "Bus", "Handy", "Arbeit", "Schule", "Haus", "Freund", "Auto",
+    "Supermarkt", "Büro", "Fernseher", "Müll", "Brot", "Dusche", "Rechnung", "Wecker", "Tasche", "Laptop",
+    "Telefon", "Brief", "Uhr", "Wäsche", "Einkauf", "Apotheke", "Bank", "Computer", "Küche", "Schlafzimmer",
+    "Stuhl", "Tisch", "Lampe", "Heizung", "Heim", "Nachbar", "Park", "Straße", "Ampel", "Fahrrad",
+    "Schuhe", "Jacke", "Schrank", "Buch", "Zeitung", "Internet", "Post", "Briefkasten", "Kalender", "Fenster"
+  ],
+  "Tiere & Natur": [
+    "Baum", "Wiese", "Wind", "Fuchs", "Eule", "Blume", "Regen", "See", "Biene", "Wolf",
+    "Fisch", "Vogel", "Käfer", "Igel", "Hase", "Löwe", "Tiger", "Elefant", "Farn", "Schmetterling",
+    "Käfer", "Frosch", "Schaf", "Bär", "Adler", "Krokodil", "Giraffe", "Berg", "Tanne", "Moos",
+    "Wald", "Wolke", "Schnecke", "Ameise", "Farn", "Mammutbaum", "Mücke", "Eichhörnchen", "Schneeflocke", "Sonne",
+    "Pflanze", "Blatt", "Kiefer", "Meise", "Feld", "Krokus", "Schaf", "Alge", "Libelle", "See"
+  ],
+  "Sport & Freizeit": [
+    "Fußball", "Basketball", "Schwimmen", "Tennis", "Radfahren", "Joggen", "Skifahren", "Golf", "Boxen", "Segeln",
+    "Turnen", "Volleyball", "Badminton", "Klettern", "Yoga", "Reiten", "Surfen", "Tauchen", "Laufen", "Skateboard",
+    "Handball", "Eishockey", "Rugby", "Angeln", "Schach", "Bowling", "Tanzen", "Golfplatz", "Marathon", "Gymnastik",
+    "Pferdesport", "Bergsteigen", "Kampfsport", "Triathlon", "Schießen", "Fischen", "Parkour", "Fitness", "Kanu", "Korbball",
+    "Schlitten", "Segelsport", "Ski", "Sportplatz", "Sportler", "Basket", "Schwimmer", "Wettkampf", "Ball", "Trainer"
+  ],
+  "Wissen & Schule": [
+    "Mathematik", "Biologie", "Physik", "Geschichte", "Geographie", "Chemie", "Literatur", "Philosophie", "Deutsch", "Englisch",
+    "Bibliothek", "Lehrer", "Hausaufgaben", "Prüfung", "Schulhof", "Tafel", "Lineal", "Pinsel", "Experiment", "Formel",
+    "Schreibmaschine", "Atlas", "Schulbank", "Notizbuch", "Klassenarbeit", "Referat", "Pause", "Stundenplan", "Lesen", "Schule",
+    "Universität", "Diplom", "Stipendium", "Lehrbuch", "Forschung", "Projekt", "Labor", "Professor", "Vortrag", "Praktikum",
+    "Test", "Zeugnis", "Aufsatz", "Mathe", "Geschichtsunterricht", "Buch", "Fach", "Schüler", "Lehrplan"
+  ],
+  "Feste & Feiern": [
+    "Weihnachten", "Geburtstag", "Ostern", "Halloween", "Silvester", "Karneval", "Hochzeit", "Party", "Geschenk", "Kerze",
+    "Feuerwerk", "Torte", "Ball", "Musik", "Tanz", "Sekt", "Einladung", "Bräutigam", "Braut",
+    "Festzelt", "Laterne", "Kostüm", "Glückwunsch", "Dekoration", "Familie", "Freunde", "Straßenfest", "Jubiläum", "Maskerade",
+    "Umzug", "Feier", "Konfetti", "Bühne", "Gäste", "Gesang", "Kerzenlicht", "Zuckerwatte", "Gulaschkanone", "Anstoßen",
+    "Böller", "Feierlichkeit", "Festtag", "Fahne", "Lichterkette", "Fotobox", "Sektglas", "Saison", "Show", "Fest"
+  ],
+  "Deutsche Begriffe": [
+    "Gemütlichkeit", "Schadenfreude", "Zeitgeist", "Fernweh", "Wanderlust", "Heimat", "Drachenfels", "Autobahn", "Bratwurst", "Biergarten",
+    "Schloss", "Wurst", "Sauerkraut", "Kuckucksuhr", "Brezel", "Mauer", "Fußball", "Fest", "Bahnsteig", "Marktplatz",
+    "Berg", "Dorf", "Kaiser", "Wald", "Sehnsucht", "Rucksack", "Zug", "Blumenstrauß", "Kirche", "Sommer",
+    "Winter", "Frühling", "Herbst", "Schnee", "Straße", "Haus", "Garten", "Bäckerei", "Tasche", "Glocke",
+    "Bier", "Schrift", "Wolke", "Lied", "Vogel", "Brücke", "Schuh", "Mantel", "Himmel", "Buch"
+  ],
+  "Stars & Promis": [
+    "Schauspieler", "Musiker", "Politiker", "Sportler", "Moderator", "Regisseur", "Sänger", "Influencer", "Model", "Autor",
+    "Oscar", "Album", "Film", "Show", "Preis", "Roter Teppich", "Interview", "Fan", "Autogramm", "Festival",
+    "Band", "Konzert", "Leben", "Karriere", "Charity", "Fotoshooting", "Promo", "Drehbuch", "Crew", "Hit",
+    "Vertrag", "Platin", "Platzierung", "Bühne", "Kritik", "Auftritt", "Biografie", "Casting", "Kamera", "Trailer",
+    "Podcast", "Event", "Presse", "Agentur", "Produzent", "Interview", "Talkshow", "Premiere", "Single", "Video"
+  ],
+  "Technologie": [
+    "Computer", "Internet", "Smartphone", "Software", "Hardware", "Robotik", "Künstliche Intelligenz", "Programmierer", "Algorithmus", "Daten",
+    "Cloud", "Server", "Drohne", "App", "Gadget", "Datenbank", "Netzwerk", "Bildschirm", "Sensor", "USB",
+    "Bluetooth", "WiFi", "KI", "Chip", "Virtual Reality", "Datenanalyse", "Cybersecurity", "Code", "Browser", "Download",
+    "Firmware", "QR-Code", "Robot", "Smartwatch", "3D-Druck", "Pixel", "E-Mail", "Softwareupdate", "Algorithmus", "Internetseite",
+    "Cloudspeicher", "Digitalkamera", "Elektronik", "Modem", "Prozessor", "USB-Stick", "Scanner", "Tablet", "Touchscreen", "Webseite"
+  ],
+  "Film & Fernsehen": [
+    "Kamera", "Drehbuch", "Schnitt", "Regisseur", "Kamera", "Licht", "Ton", "Schauspieler", "Kostüm", "Kulisse",
+    "Premiere", "Casting", "Produzent", "Episode", "Staffel", "Serie", "Dokumentation", "Trailer", "Blockbuster", "Oscar",
+    "Drehort", "Spezialeffekte", "Animation", "Storyboard", "Synchronisation", "Dialog", "Kamerateam", "Filmset", "Storyboard", "Action",
+    "Drama", "Komödie", "Horror", "Thriller", "Fantasy", "Science-Fiction", "Romantik", "Musical", "Biografie", "Kurzfilm",
+    "Spielfilm", "TV-Show", "Talkshow", "Reality-TV", "Nachrichten", "Moderator", "Fernsehsender", "Streamingdienst", "Netflix", "YouTube"
+  ],
+  "Essen & Trinken": [
+    "Brot", "Käse", "Apfel", "Salat", "Pizza", "Pasta", "Kaffee", "Tee", "Saft", "Wasser",
+    "Fleisch", "Fisch", "Gemüse", "Obst", "Suppe", "Dessert", "Kuchen", "Butter", "Ei", "Reis",
+    "Nudeln", "Gewürz", "Öl", "Zucker", "Salz", "Pfeffer", "Milch", "Joghurt", "Honig", "Schokolade",
+    "Eis", "Snack", "Fast Food", "Restaurant", "Bar", "Cocktail", "Wein", "Bier", "Sekt", "Smoothie",
+    "Nuss", "Salami", "Keks", "Braten", "Toast", "Marmelade", "Müsli", "Chips", "Kartoffel"
+  ],
+  "Musik": [
+    "Gitarre", "Klavier", "Schlagzeug", "Bass", "Sänger", "Band", "Konzert", "Album", "Melodie", "Rhythmus",
+    "Noten", "Chor", "Orchester", "Jazz", "Pop", "Rock", "Hip-Hop", "Klassik", "Blues", "Country",
+    "Song", "Hit", "Ton", "Instrument", "Text", "Produzent", "DJ", "Synthesizer", "Solo", "Klang",
+    "Takt", "Refrain", "Strophe", "Komponist", "Tonleiter", "Akkord", "Tonaufnahme", "Playback", "Sound", "Mix",
+    "Cover", "Platte", "Festival", "Probe", "Studio", "Aufnahme", "Plattenvertrag", "Chart", "Bühne", "Publikum"
+  ],
+  "Sonstiges": [
+    "Pollen", "Milchstraße", "Vulkan", "Regenbogen", "Sternbild", "Quanten", "Wind", "Komet", "Polarlicht", "Nebel",
+  "Dunst", "Molekül", "Planet", "Atom", "Magnet", "Zeit", "Energie", "Welle", "Echo", "Laser",
+  "Sand", "Wüste", "Ozean", "Gezeiten", "Insel", "Krater", "Fossil", "Schall", "Dunkelheit", "Licht",
+  "Schatten", "Temperatur", "Bewegung", "Spannung", "Farbe", "Gefühl", "Traum", "Geschichte", "Sprache", "Erinnerung",
+  "Wunsch", "Idee", "Mythos", "Legende", "Kultur", "Tradition", "Chaos", "Ordnung", "Puzzle", "Geist"
+  ]
+};
+
+    const kategorienContainer = document.getElementById("kategorienContainer");
+    for (const name in kategorien) {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" checked value="${name}"> ${name}`;
+      kategorienContainer.appendChild(label);
+    }
+
+    function spielerfelderGenerieren() {
+      const anzahl = parseInt(document.getElementById("spieleranzahl").value);
+      const container = document.getElementById("spielernamenContainer");
+      container.innerHTML = "";
+      for (let i = 1; i <= anzahl; i++) {
+        container.innerHTML += `<input type="text" placeholder="Name Spieler ${i}" value="Spieler ${i}"><br>`;
+      }
+    }
+
+    let spieler = [];
+    let impostoren = [];
+    let geheimesWort = "";
+
+    function spielStarten() {
+      const inputs = document.querySelectorAll("#spielernamenContainer input");
+      spieler = Array.from(inputs).map(i => i.value);
+      const checked = Array.from(kategorienContainer.querySelectorAll("input:checked"))
+        .map(i => kategorien[i.value])
+        .flat();
+      if (checked.length === 0) return alert("Bitte mindestens eine Kategorie wählen.");
+      const impostorAnz = parseInt(document.getElementById("impostoranzahl").value);
+      if (impostorAnz >= spieler.length) return alert("Impostoren müssen weniger als Spieler sein.");
+
+      geheimesWort = checked[Math.floor(Math.random() * checked.length)];
+      impostoren = [];
+      while (impostoren.length < impostorAnz) {
+        const i = Math.floor(Math.random() * spieler.length);
+        if (!impostoren.includes(i)) impostoren.push(i);
+      }
+
+      const kartenContainer = document.getElementById("kartenContainer");
+      kartenContainer.innerHTML = "";
+      spieler.forEach((name, i) => {
+        const karte = document.createElement("div");
+        karte.className = "card";
+        karte.dataset.index = i;
+        karte.dataset.anzeige = "name";
+        karte.innerText = name;
+        karte.onclick = () => {
+          if (karte.dataset.anzeige === "name") {
+            karte.innerText = impostoren.includes(i) ? "Impostor" : geheimesWort;
+            karte.dataset.anzeige = "wort";
+          } else {
+            karte.innerText = name;
+            karte.dataset.anzeige = "name";
+          }
+        };
+        kartenContainer.appendChild(karte);
+      });
+
+      document.getElementById("screen1").classList.add("hidden");
+      document.getElementById("screen2").classList.remove("hidden");
+    }
+
+    function aufloesen() {
+      document.getElementById("aufloesungText").innerText = "Impostor: " + impostoren.map(i => spieler[i]).join(", ");
+      document.getElementById("screen2").classList.add("hidden");
+      document.getElementById("screen3").classList.remove("hidden");
+    }
+
+    function erneutSpielen() {
+      spielStarten();
+      document.getElementById("screen3").classList.add("hidden");
+      document.getElementById("screen2").classList.remove("hidden");
+    }
+
+    function zurueckZumMenue() {
+      document.getElementById("screen3").classList.add("hidden");
+      document.getElementById("screen1").classList.remove("hidden");
+    }
+
+    spielerfelderGenerieren();
+  </script>
+</body>
+</html>
